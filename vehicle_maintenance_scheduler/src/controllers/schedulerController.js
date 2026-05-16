@@ -1,6 +1,6 @@
 const optimizeVehicleSelection = require("../services/optimizerService");
 
-const sendLog = require("../../../logging_middleware/src/services/logger");
+const Log = require("../../../logging_middleware/src/services/logger");
 
 const mockDepots = [
     {
@@ -40,11 +40,11 @@ async function getDepots(req, res) {
 
     try {
 
-        await sendLog(
+        await Log(
             "backend",
             "info",
             "controller",
-            "Fetching depot details"
+            "fetched depot data successfully"
         );
 
         res.json({
@@ -54,11 +54,11 @@ async function getDepots(req, res) {
 
     } catch (error) {
 
-        await sendLog(
+        await Log(
             "backend",
             "error",
             "controller",
-            "Depot fetch failed"
+            "failed to fetch depot data"
         );
 
         res.status(500).json({
@@ -73,11 +73,11 @@ async function getVehicles(req, res) {
 
     try {
 
-        await sendLog(
+        await Log(
             "backend",
             "info",
             "controller",
-            "Fetching vehicle task details"
+            "fetched vehicle data successfully"
         );
 
         res.json({
@@ -87,11 +87,11 @@ async function getVehicles(req, res) {
 
     } catch (error) {
 
-        await sendLog(
+        await Log(
             "backend",
             "error",
             "controller",
-            "Vehicle fetch failed"
+            "failed to fetch vehicle data"
         );
 
         res.status(500).json({
@@ -106,16 +106,13 @@ async function optimizeSchedule(req, res) {
 
     try {
 
-        const {
-            mechanicHours,
-            vehicles
-        } = req.body;
+        const { mechanicHours, vehicles } = req.body;
 
-        await sendLog(
+        await Log(
             "backend",
             "info",
             "service",
-            "Starting vehicle optimization"
+            "vehicle scheduling optimization started"
         );
 
         const optimizedResult =
@@ -124,11 +121,11 @@ async function optimizeSchedule(req, res) {
                 vehicles
             );
 
-        await sendLog(
+        await Log(
             "backend",
             "info",
             "service",
-            "Optimization completed successfully"
+            "vehicle scheduling optimization executed"
         );
 
         res.json({
@@ -138,11 +135,11 @@ async function optimizeSchedule(req, res) {
 
     } catch (error) {
 
-        await sendLog(
+        await Log(
             "backend",
             "fatal",
             "service",
-            "Vehicle optimization failed"
+            "vehicle scheduling optimization failed"
         );
 
         res.status(500).json({
