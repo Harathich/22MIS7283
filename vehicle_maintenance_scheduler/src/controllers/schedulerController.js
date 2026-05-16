@@ -1,5 +1,7 @@
 const optimizeVehicleSelection = require("../services/optimizerService");
 
+const sendLog = require("../../../logging_middleware/src/services/logger");
+
 const mockDepots = [
     {
         ID: 1,
@@ -38,12 +40,26 @@ async function getDepots(req, res) {
 
     try {
 
+        await sendLog(
+            "backend",
+            "info",
+            "controller",
+            "Fetching depot details"
+        );
+
         res.json({
             success: true,
             depots: mockDepots
         });
 
     } catch (error) {
+
+        await sendLog(
+            "backend",
+            "error",
+            "controller",
+            "Depot fetch failed"
+        );
 
         res.status(500).json({
             success: false,
@@ -57,12 +73,26 @@ async function getVehicles(req, res) {
 
     try {
 
+        await sendLog(
+            "backend",
+            "info",
+            "controller",
+            "Fetching vehicle task details"
+        );
+
         res.json({
             success: true,
             vehicles: mockVehicles
         });
 
     } catch (error) {
+
+        await sendLog(
+            "backend",
+            "error",
+            "controller",
+            "Vehicle fetch failed"
+        );
 
         res.status(500).json({
             success: false,
@@ -81,11 +111,25 @@ async function optimizeSchedule(req, res) {
             vehicles
         } = req.body;
 
+        await sendLog(
+            "backend",
+            "info",
+            "service",
+            "Starting vehicle optimization"
+        );
+
         const optimizedResult =
             optimizeVehicleSelection(
                 mechanicHours,
                 vehicles
             );
+
+        await sendLog(
+            "backend",
+            "info",
+            "service",
+            "Optimization completed successfully"
+        );
 
         res.json({
             success: true,
@@ -93,6 +137,13 @@ async function optimizeSchedule(req, res) {
         });
 
     } catch (error) {
+
+        await sendLog(
+            "backend",
+            "fatal",
+            "service",
+            "Vehicle optimization failed"
+        );
 
         res.status(500).json({
             success: false,

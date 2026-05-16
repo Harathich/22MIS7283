@@ -1,9 +1,3 @@
-const axios = require("axios");
-
-const authConfig = require("../config/auth");
-
-const validateLogInput = require("../utils/validateLog");
-
 async function sendLog(
     stack,
     level,
@@ -11,47 +5,19 @@ async function sendLog(
     message
 ) {
 
-    const isValid = validateLogInput(
+    const logObject = {
+        timestamp: new Date().toISOString(),
         stack,
         level,
-        packageName
+        package: packageName,
+        message
+    };
+
+    console.log(
+        JSON.stringify(logObject, null, 2)
     );
 
-    if (!isValid) {
-
-        console.log("Invalid log details");
-
-        return;
-    }
-
-    try {
-
-        const requestBody = {
-            stack,
-            level,
-            package: packageName,
-            message
-        };
-
-        const response = await axios.post(
-            "http://20.244.56.144/evaluation-service/logs",
-            requestBody,
-            {
-                headers: {
-                    Authorization: `Bearer ${authConfig.accessToken}`
-                }
-            }
-        );
-
-        console.log("Log created successfully");
-
-        return response.data;
-
-    } catch (error) {
-
-        console.log("Failed to send log");
-
-    }
+    return logObject;
 }
 
 module.exports = sendLog;
