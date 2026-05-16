@@ -647,3 +647,163 @@ The notification system should use:
 This ensures good performance even when the platform handles millions of notifications.
 
 ---
+
+# Stage 4
+
+## Problem Statement
+
+Currently, notifications are fetched from the database every time a student opens or refreshes the application page.
+
+As the number of users grows, continuously querying the database for every page load creates excessive database traffic and increases response time.
+
+This results in:
+
+- Slower notification loading
+- Increased server load
+- Poor user experience
+- Scalability problems
+
+---
+
+## Recommended Solution
+
+The best solution is to introduce caching and real-time communication mechanisms. The system should avoid repeatedly fetching unchanged notification data from the database.
+
+---
+
+## Proposed Architecture Improvements
+
+The improved architecture includes:
+
+- Redis caching
+- WebSocket based real-time updates
+- Pagination
+- Lazy loading
+- Database replication
+
+---
+
+## 1. Redis Caching
+
+Frequently accessed notifications should be temporarily stored in Redis cache. Instead of querying the database every time:
+
+- The backend first checks Redis
+- If cache exists, notifications are returned immediately
+- Otherwise data is fetched from the database and cached
+
+**Benefits of Redis:**
+
+- Faster response time
+- Reduced database load
+- Better scalability
+- Improved user experience
+
+**Tradeoffs of Redis:**
+
+- Additional infrastructure setup
+- Cache invalidation complexity
+- Increased memory usage
+
+---
+
+## 2. WebSocket Based Real-Time Updates
+
+Instead of polling the backend repeatedly, the frontend should maintain a WebSocket connection. Whenever a new notification is created:
+
+- Backend pushes the notification instantly
+- Frontend updates without refresh
+
+**Benefits of WebSockets:**
+
+- Real-time communication
+- Reduced unnecessary API requests
+- Lower database traffic
+- Better user experience
+
+**Tradeoffs of WebSockets:**
+
+- Persistent connection management
+- Higher server memory usage
+- Slightly more complex implementation
+
+---
+
+## 3. Pagination
+
+Notifications should be loaded in smaller batches instead of fetching the entire dataset.
+
+**Example:**
+
+```
+GET /api/notifications/22MIS7283?page=1&limit=20
+```
+
+**Benefits of Pagination:**
+
+- Faster API response
+- Reduced memory usage
+- Better frontend rendering performance
+
+**Tradeoffs of Pagination:**
+
+- Additional frontend handling
+- Multiple requests needed for older notifications
+
+---
+
+## 4. Lazy Loading
+
+Older notifications should only load when the user scrolls further. This prevents unnecessary data transfer during initial page load.
+
+**Benefits of Lazy Loading:**
+
+- Faster initial loading
+- Reduced bandwidth usage
+- Improved frontend responsiveness
+
+---
+
+## 5. Database Replication
+
+Read replicas can be introduced to distribute notification read traffic across multiple database servers. Write operations happen on the primary database while read operations use replicas.
+
+**Benefits of Replication:**
+
+- Better scalability
+- Improved read performance
+- Reduced primary database load
+
+**Tradeoffs of Replication:**
+
+- Replication lag
+- Increased infrastructure complexity
+- Higher maintenance cost
+
+---
+
+## Additional Improvements
+
+Other performance optimizations include:
+
+- Compressing API responses
+- Indexing frequently queried columns
+- Archiving old notifications
+- Using CDN for static assets
+- Batching notification requests
+
+---
+
+## Final Recommendation
+
+The most effective architecture for this system is:
+
+- PostgreSQL for persistent storage
+- Redis for caching
+- WebSockets for real-time delivery
+- Pagination and lazy loading for frontend optimization
+- Read replicas for scalability
+
+This combination provides high performance, low latency, better scalability, and improved user experience.
+
+---
+
