@@ -316,3 +316,334 @@ The frontend client communicates with the backend notification service using RES
 | WebSocket Event Layer | Pushes real-time events to connected clients |
 
 This layered architecture improves maintainability, scalability, and debugging.
+
+
+# Stage 2
+
+## Database Selection
+
+A relational database such as PostgreSQL or MySQL is suitable for the notification platform because the system handles structured data with clear relationships between students and notifications.
+
+Relational databases provide:
+
+- ACID compliance
+- Better consistency
+- Efficient querying
+- Indexing support
+- Reliable transaction handling
+
+PostgreSQL is preferred because it supports scalability, indexing, and JSON-based operations efficiently.
+
+---
+
+## Main Database Tables
+
+The system contains the following main tables:
+
+- Students
+- Notifications
+- NotificationStatus
+
+---
+
+## Students Table
+
+This table stores basic student information.
+
+| Column Name | Data Type | Description |
+|---|---|---|
+| student_id | VARCHAR | Unique student identifier |
+| student_name | VARCHAR | Name of student |
+| email | VARCHAR | Student email address |
+| department | VARCHAR | Student department |
+| created_at | TIMESTAMP | Account creation timestamp |
+
+---
+
+## Notifications Table
+
+This table stores all notifications generated in the system.
+
+| Column Name | Data Type | Description |
+|---|---|---|
+| notification_id | VARCHAR | Unique notification identifier |
+| student_id | VARCHAR | Student receiving notification |
+| notification_type | VARCHAR | Placement, Event, Result etc |
+| title | VARCHAR | Notification title |
+| message | TEXT | Notification message |
+| priority | VARCHAR | Low, Medium or High |
+| created_at | TIMESTAMP | Notification creation time |
+
+---
+
+## NotificationStatus Table
+
+This table stores the notification read status.
+
+| Column Name | Data Type | Description |
+|---|---|---|
+| status_id | VARCHAR | Unique status identifier |
+| notification_id | VARCHAR | Related notification |
+| is_read | BOOLEAN | Read or unread status |
+| read_at | TIMESTAMP | Timestamp when notification was opened |
+
+---
+
+## Relationships
+
+- One student can receive many notifications
+- One notification belongs to one student
+- One notification has one status entry
+
+---
+
+## Database Indexing
+
+Indexes improve query performance for large datasets. The following fields should be indexed:
+
+- student_id
+- notification_type
+- created_at
+- is_read
+
+**Example:**
+
+```sql
+CREATE INDEX idx_student_id
+ON Notifications(student_id);
+```
+
+---
+
+## Pagination Strategy
+
+When notification count becomes large, pagination should be used to avoid loading all notifications at once.
+
+**Example:**
+
+```
+GET /api/notifications/22MIS7283?page=1&limit=20
+```
+
+This improves:
+
+- Response time
+- Frontend performance
+- Database efficiency
+
+---
+
+## SQL Query Examples
+
+**Fetch Latest Notifications**
+
+```sql
+SELECT *
+FROM Notifications
+WHERE student_id = '22MIS7283'
+ORDER BY created_at DESC
+LIMIT 20;
+```
+
+**Fetch Unread Notifications**
+
+```sql
+SELECT *
+FROM Notifications n
+JOIN NotificationStatus ns
+ON n.notification_id = ns.notification_id
+WHERE n.student_id = '22MIS7283'
+AND ns.is_read = false;
+```
+
+---
+
+## Database Optimization Strategies
+
+To improve performance and scalability:
+
+- Use indexing for frequently searched columns
+- Use pagination for large datasets
+- Archive old notifications periodically
+- Use query optimization for high traffic operations
+- Avoid unnecessary joins
+
+---
+
+## Scalability Considerations
+
+As the number of students increases, notification traffic may grow rapidly during placement seasons and result announcements.
+
+The system should support:
+
+- Horizontal backend scaling
+- Database replication
+- Caching for frequently accessed data
+- Asynchronous notification processing
+
+---
+
+## Backup and Reliability
+
+Regular database backups should be maintained to avoid data loss. Additional reliability measures include:
+
+- Replication
+- Failover support
+- Transaction logging
+- Monitoring and alert systems
+
+---
+
+## Data Retention Policy
+
+Old notifications older than one year can be archived into cold storage to reduce active database load while still preserving historical data.
+
+# Stage 3
+
+## Query Analysis
+
+The existing query is:
+
+```sql
+SELECT *
+FROM notifications
+WHERE studentID = 1042
+AND isRead = false
+ORDER BY createdAt DESC;
+```
+
+---
+
+## Is The Query Correct?
+
+The query is functionally correct because it fetches unread notifications for a specific student ordered by latest notifications first.
+
+However, the query may become very slow when the notifications table grows to millions of records.
+
+---
+
+## Why Is The Query Slow?
+
+The table currently contains:
+
+- 50,000 students
+- 5,000,000 notifications
+
+Without proper indexing, the database performs a full table scan to find matching rows. This increases query execution time significantly.
+
+The sorting operation using `ORDER BY createdAt DESC` also becomes expensive when large datasets are involved.
+
+---
+
+## Problems In Current Query
+
+- Full table scanning
+- Expensive sorting
+- Large number of unread notifications
+- Poor scalability for high traffic systems
+
+---
+
+## Recommended Optimization
+
+A composite index should be created on `(studentID, isRead, createdAt)`.
+
+This allows the database to:
+
+- Filter student notifications quickly
+- Filter unread notifications efficiently
+- Return sorted results faster
+
+**Optimized Index:**
+
+```sql
+CREATE INDEX idx_notifications_student_read_created
+ON notifications(studentID, isRead, createdAt DESC);
+```
+
+---
+
+## Expected Computational Cost
+
+**Without Index**
+
+Time complexity is approximately `O(n)` because the database scans large portions of the table.
+
+**With Proper Index**
+
+Time complexity improves closer to `O(log n)` because indexed searching is significantly faster.
+
+---
+
+## Should We Add Indexes On Every Column?
+
+No. Adding indexes on every column is not effective.
+
+**Why Adding Too Many Indexes Is Bad:**
+
+- Increased storage usage
+- Slower insert operations
+- Slower update operations
+- Increased index maintenance cost
+- Reduced write performance
+
+Indexes should only be created on:
+
+- Frequently searched columns
+- Filtering columns
+- Sorting columns
+- Join columns
+
+**Better Indexing Strategy**
+
+Useful indexes for this system include `studentID`, `isRead`, `createdAt`, and `notificationType`. Composite indexes are preferred for common query patterns.
+
+---
+
+## Query To Find Students Who Received Placement Notifications In Last 7 Days
+
+```sql
+SELECT DISTINCT studentID
+FROM notifications
+WHERE notificationType = 'Placement'
+AND createdAt >= NOW() - INTERVAL '7 days';
+```
+
+---
+
+## Additional Performance Improvements
+
+To further improve scalability:
+
+- Use pagination
+- Archive old notifications
+- Use caching for frequently accessed data
+- Use read replicas for heavy read traffic
+- Partition very large tables
+
+**Pagination Example:**
+
+```sql
+SELECT *
+FROM notifications
+WHERE studentID = 1042
+ORDER BY createdAt DESC
+LIMIT 20 OFFSET 0;
+```
+
+Pagination reduces memory usage and improves frontend loading speed.
+
+---
+
+## Final Recommendation
+
+The notification system should use:
+
+- Proper indexing
+- Pagination
+- Optimized query patterns
+- Database scaling techniques
+
+This ensures good performance even when the platform handles millions of notifications.
+
+---
