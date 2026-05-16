@@ -807,3 +807,213 @@ This combination provides high performance, low latency, better scalability, and
 
 ---
 
+# Stage 5
+
+## Problems In Current Implementation
+
+The current implementation processes notifications sequentially:
+
+```python
+function notify_all(student_ids: array, message: string):
+    for student_id in student_ids:
+        send_email(student_id, message)
+        save_to_db(student_id, message)
+        push_to_app(student_id, message)
+```
+
+This implementation has several major problems when handling large scale notifications.
+
+---
+
+## Main Problems
+
+**1. Sequential Processing Is Slow**
+
+The system sends notifications one by one. If 50,000 students must receive notifications, total execution time becomes extremely large, and one slow email API call delays the entire process.
+
+**2. Single Point of Failure**
+
+If the email API fails midway, remaining students may never receive notifications and the system state becomes inconsistent. For example, if 20,000 students are processed and the email API crashes, the remaining 30,000 students are never notified.
+
+**3. No Retry Mechanism**
+
+Failed notifications are permanently lost because there is no retry logic.
+
+**4. Tight Coupling**
+
+The operations — sending email, saving to database, and pushing real-time updates — are tightly connected. Failure in one operation affects the others.
+
+**5. Poor Scalability**
+
+This implementation cannot efficiently handle placement season traffic, bulk notifications, or concurrent users.
+
+---
+
+## Recommended Architecture
+
+The system should use asynchronous event-driven processing using message queues.
+
+Recommended technologies:
+
+- RabbitMQ
+- Kafka
+- BullMQ
+- Redis Queues
+
+---
+
+## Improved Notification Flow
+
+1. Notification request received
+2. Notification saved in database
+3. Notification job added to queue
+4. Workers process jobs asynchronously
+5. Email service sends emails
+6. WebSocket service pushes real-time notifications
+7. Failed jobs are retried automatically
+
+---
+
+## Why Save To Database First?
+
+Saving notifications first ensures reliability. Even if email delivery fails or WebSocket delivery fails, the notification still exists in persistent storage and can be retried later. This prevents data loss.
+
+---
+
+## Should Email And DB Save Happen Together?
+
+No. Database storage and email sending should be separated because database operations are critical while email delivery is external and unreliable. The notification must exist in the database even if email delivery temporarily fails.
+
+---
+
+## Retry Mechanism
+
+Failed jobs should automatically retry after delay intervals.
+
+**Example retry strategy:**
+
+- Retry after 1 minute
+- Retry after 5 minutes
+- Retry after 15 minutes
+
+After maximum retry attempts, the job moves to a dead letter queue and system administrators are notified.
+
+---
+
+## Improved Pseudocode
+
+```python
+function notify_all(student_ids, message):
+
+    notification_id = save_notification_to_db(message)
+
+    for student_id in student_ids:
+        add_job_to_queue({
+            student_id,
+            notification_id,
+            message
+        })
+
+
+worker process_notification_job(job):
+
+    try:
+        send_email(job.student_id, job.message)
+        push_to_app(job.student_id, job.message)
+        mark_job_success(job)
+
+    except Exception:
+        retry_job(job)
+```
+
+---
+
+## Benefits Of Queue Based Architecture
+
+- Faster processing
+- Better scalability
+- Fault tolerance
+- Retry support
+- Parallel processing
+- Improved reliability
+
+---
+
+## Parallel Processing
+
+Multiple workers can process notifications simultaneously.
+
+**Example:**
+
+- Worker 1 handles students 1 to 10,000
+- Worker 2 handles students 10,001 to 20,000
+
+This drastically reduces notification delivery time.
+
+---
+
+## Dead Letter Queue
+
+Jobs that continuously fail should move to a dead letter queue for manual investigation. This prevents infinite retries and resource wastage.
+
+---
+
+## Monitoring And Logging
+
+The system should track:
+
+- Failed notifications
+- Retry attempts
+- Processing time
+- Queue size
+- Delivery success rate
+
+This improves debugging and observability.
+
+---
+
+## Final Recommendation
+
+The best architecture for large scale campus notifications is:
+
+- Asynchronous queue based processing
+- Database first persistence
+- Retry mechanisms
+- Worker based parallel execution
+- Real-time WebSocket delivery
+
+This architecture ensures scalability, reliability, high availability, and fault tolerance.
+
+# Stage 6
+
+## Priority Notification System
+
+The product manager requested a Priority Inbox feature that displays the top unread notifications based on importance and recency.
+
+The priority is determined using:
+- notification type weight
+- recency score
+
+---
+
+# Priority Order
+
+The notification weights are:
+
+| Type | Weight |
+|---|---|
+| Placement | 3 |
+| Result | 2 |
+| Event | 1 |
+
+Placement notifications receive highest priority because they are most critical for students.
+
+---
+
+# Ranking Logic
+
+The final priority score is calculated using:
+
+```txt
+Final Score =
+(Type Weight × 100) + Recency Score
